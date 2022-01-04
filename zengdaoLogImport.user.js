@@ -57,11 +57,13 @@ let ImportLog = () => {
         }
         return val
     }
+
     let getYearLogs = () => {
+        let url = window.config.ajaxGetEffortsUrl.replace('{year}', new Date().getFullYear())
         return new Promise((resolve) => {
             $.ajax({
                 method: "get",
-                url: "/pro/effort-ajaxGetEfforts-fuym-2021.html",
+                url: url,
                 success: (res) => {
                     resolve(JSON.parse(res))
                 }
