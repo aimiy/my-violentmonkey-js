@@ -49,7 +49,7 @@ let ImportLog = () => {
 
     // 工单号	工单类型	状态	优先级	主题	负责人	开始日期	计划完成日期	l
     let ExcleList = ["taskId", "需求", "taskType", "一般", "taskName", "nickname", "realStartDate", "planEndDate", "progress"]
-    let monthExcleList = ["taskId", "需求", "taskType", "一般", "taskName", "nickname", "realStartDate", "planEndDate", "progress"]
+    let monthExcleList = ["taskName", "nickname", "realStartDate", "planEndDate", "taskType", "progress"]
 
     let getNameKey = (val) => {
         for (var [key, value] of nameMap) {
@@ -164,16 +164,6 @@ let ImportLog = () => {
             }
             content += "\t"
         }
-
-
-        // content += "\t" + lastLog.nickname + "\t";
-        // if (taskInfo.progress == "100%") {
-        //     content += "已完成";
-        // } else {
-        //     content += "进行中";
-        // }
-        // content += "\t" + "王松林" + "\t" + "暂无" + "\t" + "暂无" + "\t" + taskInfo.planEndDate + "\t" + taskInfo.progress
-
 
         return content
     }
