@@ -42,13 +42,15 @@ var utils = {
 let ImportLog = () => {
     let today = dayjs().format('YYYY-MM-DD')
     let weekstart = dayjs().add(-1, 'day').startOf('week').add(1, 'day').format('YYYY-MM-DD');
+    let monthstart = dayjs().startOf('month').format('YYYY-MM-DD');
     let weekend = dayjs().add(-1, 'day').endOf('week').add(1, 'day').format('YYYY-MM-DD')
 
     let nameMap = new Map([["taskId", "工单号"], ["remainder", "剩余"], ["start", "开始时间"], ["end", "结束时间"], ["taskName", "任务名称"], ["title", "工作内容"], ["taskName", "对象"], ["progress", "进度"], ["nickname", "登记人"], ["realStartDate", "实际开始"], ["totalConsumed", "总计消耗"], ["planEndDate", "截止日期"], ["planStartDate", "预计开始"], ["planRemainder", "预计剩余"], ["taskType", "任务状态"]])
 
     // 工单号	工单类型	状态	优先级	主题	负责人	开始日期	计划完成日期	l
     let ExcleList = ["taskId", "需求", "taskType", "一般", "taskName", "nickname", "realStartDate", "planEndDate", "progress"]
-    
+    let monthExcleList = ["taskId", "需求", "taskType", "一般", "taskName", "nickname", "realStartDate", "planEndDate", "progress"]
+
     let getNameKey = (val) => {
         for (var [key, value] of nameMap) {
             if (value == val) {
@@ -109,7 +111,7 @@ let ImportLog = () => {
                     let detailInfo = {}
                     detailInfo.taskName = $(res).find('.page-title .text')[0].title;
 
-                    let detailHTML = [...$(res).find('#legendBasic table tr').toArray(), ...$(res).find('.detail-content table tr').toArray()]
+                    let detailHTML = [...$(res).find('#legendBasic table tr').toArray(), ...$(res).find('.detail-content table tr').toArray(), ...$(res).find('#legendLife table tr').toArray()]
 
 
                     for (let key in detailHTML) {
@@ -129,15 +131,28 @@ let ImportLog = () => {
             })
         })
     }
-    let generateExcleContent = (taskInfo) => {
-        
+    let generateTxt = async (log, excleList) => {
+        let txt = ""
+        for (let key in log) {
+            let taskInfo = log[key]
+            let moreTaskInfo = await getTaskDetail(key)
+            for (let y in moreTaskInfo) {
+                if (!taskInfo[y] && moreTaskInfo[y]) {
+                    taskInfo[y] = moreTaskInfo[y]
+                }
+            }
+            txt += generateExcleContent(excleList, taskInfo) + "\r\n"
+        }
+        return txt;
+    }
+    let generateExcleContent = (ExcleList, taskInfo) => {
         let content = ""
         for (let item of ExcleList) {
             let c = nameMap.get(item)
             if (c) {
                 content += (taskInfo[item] || taskInfo.log[0][item]);
                 if (item == "taskName") {
-                    for(let l of taskInfo.log){
+                    for (let l of taskInfo.log) {
                         let title = l.title.substring(3)
                         if (title !== "1") {
                             content += "-" + title;
@@ -147,7 +162,7 @@ let ImportLog = () => {
             } else {
                 content += item;
             }
-            content +=  "\t"
+            content += "\t"
         }
 
 
@@ -165,10 +180,11 @@ let ImportLog = () => {
     let initBtn = async () => {
         let yearLogs = await getYearLogs();
 
-        let weekLog = {};
+        let monthLog = {};
+        let weekLog = {}
         for (let l = yearLogs.length - 1; l > 0; l--) {
             let log = yearLogs[l]
-            if (dayjs(log.end) < dayjs(weekstart)) {
+            if (dayjs(log.end) < dayjs(monthstart)) {
                 break;
             } else {
                 let moreLogInfo = await getLogDetail(log.url)
@@ -178,40 +194,31 @@ let ImportLog = () => {
                     }
                 }
 
-                if (!weekLog[log.taskId]) {
-                    weekLog[log.taskId] = {}
-                    weekLog[log.taskId].log = []
+                if (dayjs(log.end) >= dayjs(weekstart)) {
+                    if (!weekLog[log.taskId]) {
+                        weekLog[log.taskId] = {}
+                        weekLog[log.taskId].log = []
+                    }
+                    weekLog[log.taskId].log.push(log)
                 }
-                weekLog[log.taskId].log.push(log)
+                if (!monthLog[log.taskId]) {
+                    monthLog[log.taskId] = {}
+                    monthLog[log.taskId].log = []
+                }
+                monthLog[log.taskId].log.push(log)
             }
         }
 
 
-        console.log(weekLog)
-        let todayLogTxt = "";
-        let weekLogTxt = "";
-
-        for (let key in weekLog) {
-            let taskInfo = weekLog[key]
-            let moreTaskInfo = await getTaskDetail(key)
-            for (let y in moreTaskInfo) {
-                if (!taskInfo[y] && moreTaskInfo[y]) {
-                    taskInfo[y] = moreTaskInfo[y]
-                }
-            }
-
-            weekLogTxt += generateExcleContent(taskInfo) + "\r\n"
-            // if (lastLog.end == today) {
-            //     todayLogTxt += content
-            // }
-
-        }
+        console.log()
+        let monthLogTxt = await generateTxt(monthLog, monthExcleList);
+        let weekLogTxt = await generateTxt(weekLog, ExcleList);
 
         console.log(weekLogTxt)
-        console.log(todayLogTxt)
+        console.log(monthLogTxt)
         if (ClipboardJS.isSupported()) {
-            if (todayLogTxt != "") {
-                utils.createCopyToClipboardBtn("#mainMenu", "#copyTodayButton", todayLogTxt, "复制本日日志")
+            if (monthLogTxt != "") {
+                utils.createCopyToClipboardBtn("#mainMenu", "#copyTodayButton", monthLogTxt, "复制本月日志")
             }
             if (weekLogTxt != "") {
                 utils.createCopyToClipboardBtn("#mainMenu", "#copyWeekButton", weekLogTxt, "复制一周日志")
